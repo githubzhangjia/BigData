@@ -22,6 +22,8 @@ public:
 	BigData operator/(const BigData &bigdate);
 private:
 	bool _IsINT64Overflow() const;
+	bool _IsLeftStrBig(char*pleft, size_t Lsize, char*pRight, size_t Rsize);
+	char SubLoop(char*pLeft, size_t Lsize, char*pRight, size_t Rsize);
 	void _INT64ToString();
 	string Add(string left, string right);
 	string Sub(string left, string right);
@@ -33,6 +35,7 @@ private:
 };
 
 //BigData.cpp
+#define  _CRT_SECURE_NO_WARNINGS
 #include "BigData.h"
 
 BigData::BigData(INT64 value)//传入数字
@@ -302,4 +305,158 @@ string BigData::Mul(string left, string right)
 		offset++;
 	}
 	return strRet;
+}
+BigData BigData::operator/(const BigData &bigdate)
+{
+	if (bigdate._value == 0)
+	{
+		cout << "除数不能为0";
+		return BigData(INT64(0));
+	}
+	if ((!_IsINT64Overflow()) && (!bigdate._IsINT64Overflow()))
+	{
+		return BigData(_value / bigdate._value);
+	}
+	return BigData((char*)Div(_strData, bigdate._strData).c_str());
+}
+string BigData::Div(string left, string right)
+{
+	char cSymbol = '+';
+	if (left[0] != right[0])
+		cSymbol = '-';
+
+	int Lsize = left.size();
+	int Rsize = right.size();
+	
+	if (Lsize < Rsize || (Lsize == Rsize&&strcmp(left.c_str() + 1, right.c_str() + 1) < 0))
+		return "0";
+	
+	if ("+1" == right || "-1" == right)
+		return left;
+
+	string strRet;
+	strRet[0] = cSymbol;
+	//strRet.append(1,cSmbol);
+	char*pLeft = (char*)(left.c_str() + 1);
+	char*pRight = (char*)(right.c_str() + 1);
+	int DataLen = 1;
+	Lsize -= 1;
+
+	for (int i = 0; i < Lsize;)
+	{
+		if ('0' == *pLeft)
+		{
+			strRet.append(1, '0');
+			pLeft++;
+			i++;
+
+			continue;
+		}
+			
+		if (!_IsLeftStrBig(pLeft, DataLen, pRight, Rsize - 1))
+		{
+			strRet.append(1, '0');
+			DataLen++;
+			if (i + DataLen > Lsize)
+			{
+				break;
+			}
+			continue;
+		}
+		else
+		{
+			// 循环相减
+			strRet.append(1, SubLoop(pLeft, DataLen, pRight,Rsize - 1));
+
+			// pLeft
+			while ('0' == *pLeft && DataLen > 0)
+			{
+				pLeft++;
+				i++;
+				DataLen--;
+			}
+
+			DataLen++;
+			if (i + DataLen > Lsize)
+			{
+				break;
+			}
+		}
+	}
+	return strRet;
+}
+bool BigData::_IsLeftStrBig(char*pleft, size_t Lsize, char*pRight, size_t Rsize)
+{
+	assert(pleft&&pRight);
+	if (Lsize > Rsize || (Lsize == Rsize&&strncpy(pleft, pRight, Lsize) >= 0))
+	{
+		return true;
+	}
+	return false;
+}
+char BigData::SubLoop(char*pLeft, size_t Lsize, char*pRight, size_t Rsize)
+{
+	assert(pLeft&& pRight);
+
+	char cRet = '0';
+	while (1)
+	{
+		if (!_IsLeftStrBig(pLeft, Lsize, pRight, Rsize))
+		{
+			break;
+		}
+		//做减等
+		int iLDataLen = Lsize - 1;
+		int iRDataLen = Rsize - 1;
+		while (iLDataLen >= 0 && iRDataLen >= 0  )
+		{
+			if (pLeft[iLDataLen] < pRight[iRDataLen])
+			{
+				pLeft[iLDataLen - 1] -= 1;
+				pLeft[iLDataLen] += 10;
+			}
+
+			pLeft[iLDataLen] = pLeft[iLDataLen] - pRight[iRDataLen] + '0';
+			iLDataLen--;
+			iRDataLen--;
+		}
+		while ('0' == *pLeft && Lsize > 0)
+		{
+			pLeft++;
+			Lsize--;
+		}
+
+		cRet++;
+	}
+	return cRet;
+}
+void BigData::_INT64ToString()
+{
+	//-1234
+	char cSymbol = '+';
+	INT64 tmp = _value;
+	if (tmp < 0)
+	{
+		cSymbol = '-';
+		tmp = 0 - tmp;
+	}
+	//1234
+	_strData.append(1, cSymbol);
+	//"-"
+	int iCount = 1;
+
+	while (tmp)
+	{
+		_strData.append(1, tmp % 10 + '0');
+		tmp /= 10;
+	}
+	//"-4321"
+	char*pLeft = (char*)(_strData.c_str() + 1);
+	char*pRight = (char*)(_strData.c_str() + _strData.size() - 1);
+	while (pLeft < pRight)
+	{
+		char tmp = *pLeft;
+		*pLeft++ = *pRight;
+		*pRight-- = tmp;
+	}
 }
