@@ -231,3 +231,75 @@ string BigData::Sub(string left, string right)
 	}
 	return strRet;
 }
+BigData BigData::operator*(const BigData &bigdate)
+{
+	if (_value == 0 || bigdate._value == 0)//零与任何数相乘均为0
+		return BigData(INT64(0));
+	if ((!_IsINT64Overflow()) && (!bigdate._IsINT64Overflow()))//两数均不溢出
+	{
+		if (_strData[0] == bigdate._strData[0])//同号
+		{
+			if (_strData[0] == '+'&&_value <= (MAX_INT64 / bigdate._value) ||
+				_strData[0] == '-'&&_value >= (MAX_INT64 / bigdate._value))//同号结果不溢出
+			{//2*11=22	2*5=10 -2*-5=10	
+				return BigData(_value*bigdate._value);
+			}
+			
+		}
+		else
+		{
+			if ((_strData[0] == '+' && (_value <= ((long long)MIN_INT64 / bigdate._value))) ||//2*-5=-10
+				(_strData[0] == '-' && (_value >= ((long long)MIN_INT64 / bigdate._value))))//-2*5=-10
+				return BigData(_value*bigdate._value);//异号结果不溢出
+			
+		}
+	}
+	//结果溢出
+		return BigData((char*)Mul(_strData, bigdate._strData).c_str());
+	
+}
+string BigData::Mul(string left, string right)
+{
+	int Lsize = left.size();
+	int Rsize = right.size();
+	
+	if (Lsize > Rsize)
+	{
+		swap(left, right);
+		swap(Lsize, Rsize);
+	}
+	
+	char cSymbol = '+';
+	if (left[0] != right[0])//同号相乘为正，异号为父
+	{
+		cSymbol = '-';
+	}
+	string strRet;
+	strRet.assign(Lsize + Rsize - 1,'0');//赋值
+	strRet[0] = cSymbol;
+	int DataLen = strRet.size();
+	
+	int offset = 0;//错位
+	
+	for (int i = 1; i < Lsize; i++)
+	{
+		char cLeft = left[Lsize - i] - '0';
+		char cStep = 0;
+		if (cLeft == 0)
+		{
+			offset++;
+			continue;//结束本次循环
+		}
+		for (int j = 1; j < Rsize; j++)
+		{
+			char cRet = cLeft*(right[Rsize - j] - '0');
+			cRet += cStep;
+			cRet += (strRet[DataLen - j - offset] - '0');
+			strRet[DataLen - j - offset] = cRet % 10 + '0';
+			cStep = cRet / 10;
+		}
+		strRet[DataLen - Rsize - offset] += cStep;
+		offset++;
+	}
+	return strRet;
+}
